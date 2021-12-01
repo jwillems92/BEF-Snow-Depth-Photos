@@ -1,0 +1,154 @@
+---
+title: "Untitled"
+author: "Josh Willems"
+date: "11/30/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(suncalc)
+library(lubridate)
+library(imager)
+```
+
+
+```{r}
+# Pull in vector of all images
+image_files <- list.files(path = "Snow Photos",
+                          pattern = "*.jpg",
+                          recursive = TRUE,
+                          full.names = TRUE)
+
+# Convert to dataframe
+image_files <- as.data.frame(image_files) %>% 
+                  rename("SourceFile" = "image_files")
+```
+
+```{r}
+file_dat <- image_files %>% 
+  
+  #Duplicate column for splitting
+  mutate(DateTime = SourceFile) %>% 
+  
+  # Remove file path and site ID portion of file names
+  mutate(DateTime = str_remove(DateTime, 
+                               pattern = "Snow Photos/\\d+/\\d+/NEON.D01.BART.DP1.00042_")) %>% 
+  
+  # Split the DateTime column out into individual components
+  separate(DateTime,
+           into = c("Year", "Month", "Day", "Time"),
+           sep = "_") %>% 
+  
+  # Remove the .jpg extension from each file name
+  mutate(Time = str_remove(Time,
+                           pattern = ".jpg")) %>% 
+  
+  # Format the time column correctly
+  mutate(Time = paste0(substr(Time,1,2),":",substr(Time,3,4),":", substr(Time,5,6))) %>% 
+  
+  # Create a correctly formatted Date column
+  mutate(Date = mdy(paste(Month, Day, Year, sep = "/"))) %>% 
+  
+  # Create a Datetime column of time photo was taken
+  mutate(PhotoTime = as.POSIXct(paste(Date, Time), 
+                                format="%Y-%m-%d %H:%M:%S")) %>% 
+  
+  # Select only column of interest
+  select(SourceFile, Year, Month, Day, PhotoTime, Date)
+```
+
+```{r}
+# Create a vector of all unique dates
+date_vec <- file_dat %>% 
+  group_by(Date) %>%                           # Likely a better way to do this...
+  summarise(PhotoTime = first(PhotoTime)) %>%  # This summarise is just a placeholder for getting the
+  ungroup() %>%                                # vector of unique dates
+  pull(Date)
+```
+
+```{r}
+# Get sunrise times for all dates
+sunrise_times <- getSunlightTimes(date = date_vec, lat = 44.0639, lon = -71.2874, 
+                                  keep = c("sunrise"),
+                                  tz = "America/New_York") %>% 
+                 select(date, sunrise)
+
+
+# Join sunrise times back to main exif data frame
+joined_df <- left_join(file_dat, sunrise_times, by = c("Date" = "date"))
+```
+
+
+```{r}
+final_df <- joined_df %>% 
+  
+  # Calculate time difference between when photo was taken and sunrise time of that day
+  mutate(TimeAfterSunrise = as.numeric(difftime(PhotoTime, sunrise, units="hours"))) %>% 
+  
+  # Filter for photos taken >= 1 hour after sunrise
+  filter(TimeAfterSunrise >= 1) %>% 
+  
+  # Select only columns needed for final spreadsheet
+  select(SourceFile, Date, Year, Month, Day, PhotoTime) %>% 
+  
+  # Group by date to get only 1 photo per day
+  group_by(Date) %>% 
+  summarise(SourceFile = first(SourceFile),
+            PhotoTime = first(PhotoTime)) %>%     # This should give us just the first photo of the day
+  
+  # Break Date column back up into individual components for easier sorting
+  mutate(Year = year(Date),
+         Month = month(Date),
+         Day = day(Date)) %>% 
+  
+  # Reselect final columns wanted in order
+  select(SourceFile, Year, Month, Day, PhotoTime) %>% 
+  
+  # Remove date from PhotoTime column
+  separate(PhotoTime,
+           into = c(NA, "Time"),
+           sep = " ")
+
+# Save output as a csv file
+ write.csv(file = "BEF Snow 2020 Subsetted.csv", final_df, row.names = FALSE)
+```
+
+```{r}
+## Subsetting the photos
+
+# Create vector of subsetted file names with full path
+subset_files <- final_df %>% pull(SourceFile)
+
+
+# For loop for saving subsetted photos
+# For now have to manually create folders for each year/month in order for it to sort them
+for(index in subset_files){
+  
+  # Define the file path for original photos to sort through  
+  fpath <- paste0("C:/Users/jswil/Documents/R/PROJECTS/PhD/BEF Snow Depth Photos/", index)
+  
+  
+  # Read each file from the subset vector
+  temp <- load.image(fpath) 
+  
+  
+  # Use str_remove to remove the old file path and .jpg extension from the index
+  # Use new, simplified file name to create a save path to a new folder
+  save_path <- paste0("C:/Users/jswil/Documents/R/PROJECTS/PhD/BEF Snow Depth Photos/Subsetted Photos/",
+                      str_remove(index, 
+                                 pattern = ".jpg") %>% # Remove .jpg extension
+                        str_remove(pattern = "Snow Photos/"), # Remove old file path
+                      ".jpg")
+  
+  
+  # Save as new file in new folder
+  save.image(temp, file = save_path)
+  
+}
+```
+

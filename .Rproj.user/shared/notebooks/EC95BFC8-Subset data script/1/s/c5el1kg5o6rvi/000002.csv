@@ -1,6 +1,5 @@
 "0","# Separate Date & Time columns"
 "0","file_dat <- exif_dat %>% "
-"0","  select(SourceFile, FileModifyDate) %>% "
 "0","  separate(col = ""FileModifyDate"",           # Split col into Date & Time cols"
 "0","           into = c(""Date"", ""Time""),"
 "0","           sep = "" "") %>% "
