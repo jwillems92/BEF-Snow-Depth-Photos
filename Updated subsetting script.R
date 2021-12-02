@@ -118,11 +118,19 @@ subset_files <- final_df %>% pull(SourceFile)
 
 
 # For loop for saving subsetted photos
-# For now have to manually create folders for each year/month in order for it to sort them
 for(index in subset_files){
   
   # Define the file path for original photos to sort through  
   fpath <- paste0("C:/Users/jswil/Documents/R/PROJECTS/PhD/BEF Snow Depth Photos/", index)
+  
+  
+  # Create new folders to save subsetted photos into (throws warnings but seems to run fine)
+  cwd <- getwd()
+  mkfldr <- paste0("Subsetted Photos/",
+                   str_remove(index, 
+                              pattern = "Snow Photos/") %>% 
+                     str_remove(pattern = "/NEON.D01.BART.DP1.00042_\\d+_\\d+_\\d+_\\d+.jpg"))
+  dir.create(file.path(cwd, mkfldr), recursive = TRUE)
   
   
   # Read each file from the subset vector
@@ -135,7 +143,7 @@ for(index in subset_files){
                       str_remove(index, 
                                  pattern = ".jpg") %>% # Remove .jpg extension
                         str_remove(pattern = "Snow Photos/"), # Remove old file path
-                      ".jpg")
+                      ".jpg") # Add .jpg extension back in to save file
   
   
   # Save as new file in new folder
