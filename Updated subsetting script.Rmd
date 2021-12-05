@@ -65,10 +65,8 @@ file_dat <- image_files %>%
 ```{r}
 # Create a vector of all unique dates
 date_vec <- file_dat %>% 
-  group_by(Date) %>%                           # Likely a better way to do this...
-  summarise(PhotoTime = first(PhotoTime)) %>%  # This summarise is just a placeholder for getting the
-  ungroup() %>%                                # vector of unique dates
-  pull(Date)
+              pull(Date) %>% 
+              unique()
 ```
 
 ```{r}

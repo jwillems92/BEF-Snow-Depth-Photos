@@ -56,20 +56,16 @@ file_dat <- image_files %>%
 
 # Create a vector of all unique dates
 date_vec <- file_dat %>% 
-  group_by(Date) %>%                           # Likely a better way to do this...
-  summarise(PhotoTime = first(PhotoTime)) %>%  # This summarise is just a placeholder for getting the
-  ungroup() %>%                                # vector of unique dates
-  pull(Date)
+              pull(Date) %>% 
+              unique()
 
 
-# Get sunrise times for all dates
+# Get sunrise times for all dates & join back to exif data frame
 sunrise_times <- getSunlightTimes(date = date_vec, lat = 44.0639, lon = -71.2874, 
                                   keep = c("sunrise"),
                                   tz = "America/New_York") %>% 
                  select(date, sunrise)
 
-
-# Join sunrise times back to main exif data frame
 joined_df <- left_join(file_dat, sunrise_times, by = c("Date" = "date"))
 
 
@@ -88,7 +84,7 @@ final_df <- joined_df %>%
   # Group by date to get only 1 photo per day
   group_by(Date) %>% 
   summarise(SourceFile = first(SourceFile),
-            PhotoTime = first(PhotoTime)) %>%     # This should give us just the first photo of the day
+            PhotoTime = first(PhotoTime)) %>%     # Get just the first photo of each day
   
   # Break Date column back up into individual components for easier sorting
   mutate(Year = year(Date),
@@ -125,6 +121,8 @@ for(index in subset_files){
   
   
   # Create new folders to save subsetted photos into (throws warnings but seems to run fine)
+  # Warning due to R trying to create new folder for every file
+  # Could try a nested for loop to create folders but this works ok for now
   cwd <- getwd()
   mkfldr <- paste0("Subsetted Photos/",
                    str_remove(index, 
