@@ -1,2 +1,2 @@
 # BEF-Snow-Depth-Photos
-Snow depth photos from NEON stakes in BEF
+Code for sorting snow depth photos from NEON stakes in BEF. Identifies photos of interest and saves subset of photos in new folders
